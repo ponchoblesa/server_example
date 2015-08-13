@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+		<title>Server example</title>
+	</head>
+	<body>
+		<h1>Easy Applications Server Example</h1>
+		<form action="/" id="examples">
+		  <input type="text" name="id" placeholder="id"><br />
+		  <input type="text" name="title" placeholder="Title"><br />
+		  <input type="text" name="description" placeholder="Description"><br />
+		  <input type="submit" value="Save">
+		  <input type="submit" value="Delete">
+		  <input type="submit" value="Clear">
+		</form>
+		<div id="result"></div>
+		<script src="https://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+		<script>
+		
+		var idInput = $("input[name='id']"),
+		    server = server||{},
+		    helper = helper||{};
+		
+		server.apilocation = 'http://localhost:3000/api';
+		
+		helper.clearFields = function(){
+		  $('form').children().each(function(e, v){ 
+		    var name = $(v).attr("name"),
+		        isSelect = $(v).is('select');
+		
+		    if (name !== undefined && !isSelect) {
+		      $(v).val('');
+		    } if (isSelect){
+		      $(v).val($(v).children().first().text());
+		    }
+		
+		  });
+		};
+		
+		helper.setFields = function(obj){
+		  $('form').children().each(function(e, v){ 
+		    var name = $(v).attr("name");
+		
+		    if (name !== undefined && name !== 'id') {
+		      $(v).val(obj[name]);
+		    }
+		  });
+		};
+		
+		server.findAll = function() {
+		  $.ajax({
+		      cache: false,
+		      url : server.apilocation +'/examples',
+		      type: "GET",
+		      dataType : "json",
+		      success : function(callback){
+		          console.log(JSON.stringify(callback));
+		          $('#result').empty().append(JSON.stringify(callback));
+		      },
+		      error : function(e){
+		          alert("Error!: "+e.responseText);
+		      }
+		    });
+		};
+		
+		server.findResource = function(id) {
+		  if (id === ""){
+		    helper.clearFields();
+		    server.findAll();
+		    return;
+		  }
+		
+		  $.ajax({
+		      cache: false,
+		      url : server.apilocation +'/examples/'+id,
+		      type: "GET",
+		      dataType : "json",
+		      success : function(callback){
+		          if(!callback){
+		            alert("Error! Resource with id "+id+" does not exist");
+		            helper.clearFields();
+		            return;
+		          }
+		          helper.setFields(callback);
+		      },
+		      error : function(e){
+		          alert("Error! Resource with id "+id+" does not exist: "+e.responseText);
+		          idInput.val('');
+		      }
+		    });
+		
+		};
+		
+		server.addResource = function(obj) {
+		  $.ajax({
+		      cache: false,
+		      url : server.apilocation +'/examples',
+		      type: "POST",
+		      data: obj,
+		      dataType : "json",
+		      success : function(callback){
+		          alert("Resource "+callback.title+" added");
+		          helper.setFields(callback);
+		          idInput.val(callback._id);
+		      },
+		      error : function(e){
+		          alert("Error!: "+e.responseText);
+		      }
+		    });
+		
+		};
+		
+		server.editResource = function(id, obj) {
+		  if (id === ""){
+		    server.addResource(obj);
+		    return;
+		  }
+		
+		  $.ajax({
+		      cache: false,
+		      url : server.apilocation +'/examples/'+id,
+		      type: "PUT",
+		      data: obj,
+		      dataType : "json",
+		      success : function(callback){
+		          alert("Resource "+callback.title+" edited");
+		      },
+		      error : function(e){
+		          alert("Error!: "+e.responseText);
+		      }
+		    });
+		
+		};
+		
+		server.deleteResource = function(id) {
+		  if (!id||id==="") return;
+		
+		  $.ajax({
+		      cache: false,
+		      url : server.apilocation +'/examples/'+id,
+		      type: "DELETE",
+		      dataType : "json",
+		      success : function(callback){
+		        alert("Resource "+id+" deleted");
+		        helper.clearFields();
+		      },
+		      error : function(e){
+		          alert("Error!: "+e.responseText);
+		      }
+		  });
+		
+		};
+		
+		$("form input[type=submit]").click(function() {
+		    $("input[type=submit]", $(this).parents("form")).removeAttr("clicked");
+		    $(this).attr("clicked", "true");
+		});
+		
+		//Tab out on id
+		idInput.keydown(function (e) {
+		
+		   if (e.which == 9){
+		    server.findResource(idInput.val());
+		   }
+		
+		});
+		
+		// Attach a submit handler to the form
+		$( "#examples" ).submit(function( event ) {
+		
+		  // Stop form from submitting normally
+		  event.preventDefault();
+		 
+		  var val = $("input[type=submit][clicked=true]").val();
+		
+		  var data = {};
+		
+		  //Gathering the Data
+		  //and removing undefined keys(buttons)
+		  $.each(this.elements, function(i, v){
+		      var input = $(v);
+		      data[input.attr("name")] = input.val();
+		      delete data["undefined"];
+		      delete data["id"];
+		  });
+		
+		  if (val === "Save") {
+		    server.editResource($.trim(idInput.val()), data);
+		  } else if (val === "Delete"){
+		    server.deleteResource($.trim(idInput.val()));
+		  } else if (val === "Clear"){
+		    helper.clearFields();
+		  }
+		  
+		});
+		</script>		
+	</body>
+</html>
